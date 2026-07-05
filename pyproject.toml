@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lastsolve"
+version = "0.1.0"
+description = "The last few solves you'll ever pay for: a certified accelerator and identification layer over any black-box parametric solver, built on resona's effective-rank dial."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Dmytro Sierikov" }]
+keywords = ["surrogate", "pde", "inverse-problems", "cramer-rao",
+            "chebyshev", "effective-rank", "reduced-order-modeling"]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "resona>=3.1",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.urls]
+Repository = "https://github.com/dimaq12/lastsolve"
+Series = "https://github.com/dimaq12/the-price-of-an-answer"
+
+[tool.setuptools]
+packages = ["lastsolve"]
