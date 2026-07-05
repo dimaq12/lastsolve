@@ -1,5 +1,7 @@
 # lastsolve
 
+![lastsolve — the last few solves you'll ever pay for: a black-box solver feeds the Φ₁ dial; healthy readings become a certified microsecond surrogate cache, walls and out-of-range queries get an honest refusal](https://raw.githubusercontent.com/dimaq12/lastsolve/main/assets/banner.jpg)
+
 **The last few solves you'll ever pay for.**
 
 `lastsolve` is a certified accelerator and identification layer over *any* black-box parametric solver. You bring an expensive function `f(k) → field` — a PDE solver, a legacy code behind a subprocess, a simulator you can't even import. `lastsolve` spends a handful of calls on Chebyshev nodes and hands back the whole price list:
