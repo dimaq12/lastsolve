@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import numpy as np
 import resona
+import resona.defect
 from scipy.optimize import minimize_scalar
 
 #: named parameter transforms for `transform='auto'` — the surrogate can
@@ -162,6 +163,22 @@ class Surrogate:
         dudp = (cp @ self.U - (S1/S0)*cp.sum())/S0
         ek = 1e-7*max(abs(k), 1.0)
         return dudp*(self.tf(k+ek)-self.tf(k-ek))/(2*ek)
+
+    def sensitivity(self, k, refine=True, eps=None):
+        """∂f/∂k measured on the TRUE solver by central differences.
+
+        refine=True adds one Richardson step (resona.defect.richardson,
+        p=2): two extra solves buy two extra orders of accuracy. Use this
+        for Fisher information at a k where interpolation is not trusted —
+        e.g. near a detected wall; inside the fitted range, `deriv(k)` is
+        both free and more accurate.
+        """
+        e = eps or 1e-3*max(abs(k), 1e-3)
+        W1 = (self._f(k+e) - self._f(k-e))/(2*e)
+        if not refine:
+            return W1
+        W2 = (self._f(k+e/2) - self._f(k-e/2))/e
+        return resona.defect.richardson(W1, W2, p=2)
 
     # ── inverse problem ──────────────────────────────────────────────────────
     def invert(self, y_obs, polish=False):

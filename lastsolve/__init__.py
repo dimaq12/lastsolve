@@ -26,11 +26,12 @@ from .surrogate import Surrogate, TRANSFORMS
 from .accelerate import accelerate, Accelerated
 from .identify import identify, IdentifyResult
 from .audit import audit, AuditReport
-from .walls import detect_break, WallReport
+from .walls import detect_break, WallReport, classify_wall, WallClass, hard_points
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __all__ = [
     "Surrogate", "TRANSFORMS", "accelerate", "Accelerated",
     "identify", "IdentifyResult", "audit", "AuditReport",
-    "detect_break", "WallReport", "__version__",
+    "detect_break", "WallReport", "classify_wall", "WallClass",
+    "hard_points", "__version__",
 ]

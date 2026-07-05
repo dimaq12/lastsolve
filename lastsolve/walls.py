@@ -15,6 +15,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+import resona.cost
+from resona.defect import hard_points as hard_points  # re-export: for OPERATOR
+# families H(k), resona's response-susceptibility scan finds avoided crossings /
+# transitions matrix-free — use it when your problem exposes an operator, not
+# just a field map: k_star, profile = hard_points(family, ks, B).
 
 from .surrogate import Surrogate
 
@@ -31,6 +36,49 @@ class WallReport:
             return f"WallReport(healthy, val_err={self.val_err_full:.1e})"
         return (f"WallReport(WALL at k̂≈{self.k_hat:.4g}, "
                 f"val_err={self.val_err_full:.1e}, solves={self.solves})")
+
+
+@dataclass
+class WallClass:
+    kind: str                 # 'removable' | 'genuine'
+    ranks: list
+    solves: int
+
+    def __repr__(self):
+        return (f"WallClass('{self.kind}', lift-ranks {self.ranks}, "
+                f"solves={self.solves})")
+
+
+def classify_wall(forward, krange, n_samples=192, windows=(16, 32, 64, 96),
+                  seed=0):
+    """After detect_break fires: WHAT KIND of wall is it?
+
+    'removable' — the lift rank of the parametric trajectory SATURATES with
+    the window: a finite chart linearizes the singularity (a shock, a
+    pitchfork — some coordinate like √(k−k̂) heals it; go find it, e.g. with
+    Surrogate(transform='auto') per branch).
+    'genuine'   — the rank GROWS with the window: no finite chart exists;
+    stop spending nodes and treat it as a hard boundary.
+
+    This is resona.cost.is_extractable — the same lift-rank saturation test
+    that separated Shor's wall from a periodic signal in Journey I — pointed
+    at the parametric response. Costs n_samples real solves (the signal must
+    genuinely cross the wall; a surrogate is not to be trusted there).
+    """
+    ka, kb = float(krange[0]), float(krange[1])
+    rng = np.random.default_rng(seed)
+    w = None
+    sig = []
+    for k in np.linspace(ka, kb, n_samples):
+        y = np.asarray(forward(float(k)), dtype=float)
+        if w is None:
+            w = rng.standard_normal(y.size)
+            w /= np.linalg.norm(w)
+        sig.append(float(w @ y))
+    ok, ranks = resona.cost.is_extractable(np.asarray(sig), windows=windows)
+    return WallClass(kind='removable' if ok else 'genuine',
+                     ranks=list(np.round(np.asarray(ranks, dtype=float), 2)),
+                     solves=n_samples)
 
 
 def detect_break(forward, krange, bad=1e-6, levels=6, seed=0):

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lastsolve"
-version = "0.1.0"
+version = "0.1.1"
 description = "The last few solves you'll ever pay for: a certified accelerator and identification layer over any black-box parametric solver, built on resona's effective-rank dial."
 readme = "README.md"
 requires-python = ">=3.9"

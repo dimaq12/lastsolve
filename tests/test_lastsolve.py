@@ -2,7 +2,8 @@
 import numpy as np
 import pytest
 
-from lastsolve import (Surrogate, accelerate, identify, audit, detect_break)
+from lastsolve import (Surrogate, accelerate, identify, audit, detect_break,
+                       classify_wall, hard_points)
 from lastsolve.zoo import zoo, make_observable, X, K2, strang
 
 
@@ -125,3 +126,33 @@ def test_wall_silent_on_healthy():
     pde, f = burgers_forward()
     rep = detect_break(f, (0.65*pde.k0[0], 1.35*pde.k0[0]))
     assert not rep.alarmed
+
+
+def test_classify_wall_pitchfork_is_removable():
+    # the pitchfork is a shock-type singularity: a finite lift linearizes it
+    # (we heal it with √(k−k̂)) — resona's lift-rank test must agree
+    rep = classify_wall(_allen_cahn, (-0.3, 0.5), n_samples=160,
+                        windows=(16, 32, 48, 64))
+    assert rep.kind == 'removable'
+    assert rep.solves == 160
+
+
+def test_sensitivity_richardson_beats_plain_fd():
+    pde, f = burgers_forward()
+    s = Surrogate(f, (0.7*pde.k0[0], 1.3*pde.k0[0])).fit()
+    k = 1.05*pde.k0[0]
+    truth = s.deriv(k)                       # interpolant derivative ~1e-14
+    eps = 0.02*pde.k0[0]                     # deliberately coarse step
+    plain = s.sensitivity(k, refine=False, eps=eps)
+    refined = s.sensitivity(k, refine=True, eps=eps)
+    e_plain = np.linalg.norm(plain-truth)/np.linalg.norm(truth)
+    e_ref = np.linalg.norm(refined-truth)/np.linalg.norm(truth)
+    assert e_ref < e_plain/10
+
+
+def test_hard_points_avoided_crossing():
+    fam = lambda k: np.array([[k, 0.05], [0.05, -k]])
+    ks = np.linspace(-0.5, 0.5, 41)
+    k_star, profile = hard_points(fam, ks, np.eye(2))
+    assert abs(k_star) <= 0.025              # gap minimum is at k = 0
+    assert len(profile) == len(ks)
