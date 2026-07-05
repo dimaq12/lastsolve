@@ -4,6 +4,12 @@
 
 `lastsolve` is a certified accelerator and identification layer over *any* black-box parametric solver. You bring an expensive function `f(k) → field` — a PDE solver, a legacy code behind a subprocess, a simulator you can't even import. `lastsolve` spends a handful of calls on Chebyshev nodes and hands back the whole price list:
 
+> **In plain terms.** You have a simulation that takes 2 minutes, and your workflow — a parameter sweep, a calibration loop, an MCMC — needs to call it 10,000 times. `lastsolve` runs it ~10 times, learns how the answer depends on the parameter, and serves the other 9,990 calls in microseconds — **with a validated error bar on every answer, and a typed exception instead of a guess whenever it can't keep that promise.**
+
+**The contract:** `f(k) → 1-D numpy array` (anything `np.asarray`-able; a scalar result is a length-1 array). Plain CPU NumPy in, plain NumPy out — no PyTorch/JAX tensors needed, no GPU, no training loops. The whole library is a few files of numpy + scipy + [resona](https://pypi.org/project/resona/) you can read in an evening.
+
+**Learn by doing:** the **[COOKBOOK](COOKBOOK.md)** — ten paste-and-run recipes, each ending with the verbatim output it printed on this machine.
+
 ```python
 from lastsolve import accelerate, learn
 
@@ -56,9 +62,9 @@ The research trail with every number: [The Price of an Answer](https://github.co
 ## Install & test
 
 ```bash
-pip install numpy scipy resona
-pip install -e .
-pytest tests/ -q        # 26 tests, ~17 s, real PDEs inside
+pip install numpy scipy resona   # the FULL dependency list — no ML frameworks,
+pip install -e .                 # no CUDA, nothing to train
+pytest tests/ -q                 # 26 tests, ~17 s, real PDEs inside
 ```
 
 ## Honest limits (v1.1)

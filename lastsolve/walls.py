@@ -77,7 +77,7 @@ def classify_wall(forward, krange, n_samples=192, windows=(16, 32, 64, 96),
         sig.append(float(w @ y))
     ok, ranks = resona.cost.is_extractable(np.asarray(sig), windows=windows)
     return WallClass(kind='removable' if ok else 'genuine',
-                     ranks=list(np.round(np.asarray(ranks, dtype=float), 2)),
+                     ranks=[float(x) for x in np.round(np.asarray(ranks, dtype=float), 2)],
                      solves=n_samples)
 
 
