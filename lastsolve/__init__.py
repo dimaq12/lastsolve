@@ -27,11 +27,17 @@ from .accelerate import accelerate, Accelerated
 from .identify import identify, IdentifyResult
 from .audit import audit, AuditReport
 from .walls import detect_break, WallReport, classify_wall, WallClass, hard_points
+from .multiparam import SurrogateND
+from .adapters import CommandSolver, accelerate_command
+from .timeprop import TimePropagator
+from .spectral_id import identify_spectral
+from .audit import normality_warning
 
-__version__ = "0.1.1"
+__version__ = "1.0.0"
 __all__ = [
     "Surrogate", "TRANSFORMS", "accelerate", "Accelerated",
-    "identify", "IdentifyResult", "audit", "AuditReport",
-    "detect_break", "WallReport", "classify_wall", "WallClass",
-    "hard_points", "__version__",
+    "identify", "IdentifyResult", "audit", "AuditReport", "normality_warning",
+    "detect_break", "WallReport", "classify_wall", "WallClass", "hard_points",
+    "SurrogateND", "CommandSolver", "accelerate_command",
+    "TimePropagator", "identify_spectral", "__version__",
 ]

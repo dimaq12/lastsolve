@@ -27,6 +27,12 @@ Built on [`resona`](https://pypi.org/project/resona/)'s matrix-free effective-ra
 | `identify(f, data, krange)` | maximum-likelihood k̂ ± Cramér–Rao bar from one observation | verdict includes *"the data do not contain this parameter"* when they don't |
 | `audit(f, x0, sigma, prior)` | field-level identifiability: how many independent numbers about N unknowns your dataset holds (matrix-free probes + resona) | reports the **blind** subspace no method can recover, before anyone reconstructs anything |
 | `detect_break(f, krange)` | bifurcation alarm + blind localization via validation-error bisection | refuses to fit across broken physics instead of interpolating a lie |
+| `classify_wall(f, krange)` | after the alarm: is the wall *removable* (a coordinate heals it) or *genuine* (Shor-class)? | resona's lift-rank saturation test — the Journey-I instrument, pointed at your family |
+| `SurrogateND(f, box)` | several parameters, committee-disagreement adaptive design | 45 solves matched a 125-solve tensor grid on a 3-parameter family; sloppiness (Φ₁ ≈ 1–2 at p=3) is measured, not assumed |
+| `CommandSolver` + `accelerate_command` | accelerate a solver you cannot import — any CLI/binary | every subprocess invocation counted |
+| `TimePropagator(snapshots)` | learn the propagator from one trajectory (DMD/Koopman via resona.lift) | ships \|λ\|max stability verdict + held-out-tail validation; says when long prediction is dishonest |
+| `identify_spectral(family, k0, λs)` | recover a parameter from a measured spectral fingerprint (resona.wkernel + rayleigh_polish) | uses several eigenvalues — one alone can be ambiguous, and the docstring says so |
+| `normality_warning(A)` | non-normality check before trusting any spectral dial | "the spectrum lies about where this operator acts" is a measurable condition |
 
 ## Why believe any of this
 
@@ -44,12 +50,12 @@ The research trail with every number: [The Price of an Answer](https://github.co
 ```bash
 pip install numpy scipy resona
 pip install -e .
-pytest tests/ -q        # 10 tests, ~6 s, real PDEs inside
+pytest tests/ -q        # 19 tests, ~13 s, real PDEs inside
 ```
 
-## Honest limits (v0.1)
+## Honest limits (v1.0)
 
-- **Single scalar parameter.** Multi-parameter adaptive designs are prototyped (45 solves matched a 125-solve tensor grid on a 3-parameter family) and land in v0.2.
+- Scalar-parameter surrogates are certified; **multi-parameter** (`SurrogateND`) is adaptive least-squares — excellent in the sloppy regime (which is most of physics), but its validation is empirical, not conformal yet.
 - The surrogate is built **per initial condition / configuration** — it is a cache around a question family, not a general solver replacement.
 - Smoothness is measured, not assumed: when the parametric manifold genuinely resists (a breathing soliton — Kolmogorov n-width), Φ₁ flags it and no node budget will help. The dial exists precisely so the library can refuse honestly.
 - `resona.effective_rank` is a stochastic (Hutchinson) estimate; `lastsolve` uses 128 probes, good to a few percent on the dial.

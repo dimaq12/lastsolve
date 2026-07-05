@@ -16,6 +16,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import resona
+import resona.defect
 
 
 @dataclass
@@ -31,6 +32,36 @@ class AuditReport:
         return (f"AuditReport(phi1={self.phi1:.2f}, visible≈{self.visible} of "
                 f"{self.n_probes} probed directions, solves={self.solves}, "
                 f"'{self.verdict}')")
+
+
+def normality_warning(A=None, matvec=None, rmatvec=None, N=None, probes=48,
+                      seed=0):
+    """Non-normality check (resona.defect.normality) — the spectral-dial
+    disclaimer. When ‖[A,A*]‖ is large relative to ‖A‖², eigenvalue-based
+    reads (including Φ₁-style dials on the operator itself) can mislead:
+    the spectrum lies far from where the operator actually acts. Returns
+    (relative_energy, warning_string_or_None)."""
+    if A is not None:
+        A = np.asarray(A, dtype=float)
+        energy = float(resona.defect.normality(A)[0])
+        scale = float(np.linalg.norm(A, 'fro')**4) + 1e-300
+    else:
+        energy = float(resona.defect.normality(matvec, N=N, rmatvec=rmatvec,
+                                               probes=probes, seed=seed)[0])
+        # scale ‖A‖_F² by Hutchinson on AᵀA
+        rng = np.random.default_rng(seed)
+        acc = 0.0
+        for _ in range(8):
+            v = rng.standard_normal(N)
+            acc += float(np.dot(matvec(v), matvec(v)))/N
+        scale = (acc/8*N)**2 + 1e-300
+    rel = energy/scale
+    warn = None
+    if rel > 1e-2:
+        warn = ("operator is strongly non-normal — spectral dials can lie; "
+                "check resona.defect.pseudospectrum before trusting "
+                "eigenvalue-based reads")
+    return rel, warn
 
 
 def audit(forward, x0, sigma, prior_amp, n_probes=16, eps=None, seed=0):
