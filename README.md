@@ -76,10 +76,10 @@ pip install -e . && pip install pytest
 pytest tests/ -q                 # 26 tests, ~17 s, real PDEs inside
 ```
 
-## Honest limits (v1.1)
+## Honest limits (v1.1.2)
 
 - Scalar-parameter surrogates are certified; **multi-parameter** (`SurrogateND`) is adaptive least-squares — excellent in the sloppy regime (which is most of physics), but its validation is empirical, not conformal yet.
-- The surrogate is built **per initial condition / configuration** — it is a cache around a question family, not a general solver replacement.
+- A *scalar-k* surrogate is tied to one configuration — but that is not the real limit: **lift the configuration into parameters.** Expand the initial condition (or geometry, or forcing) in a small basis and hand its coefficients to `SurrogateND` alongside `k`; one precompute then covers the whole *family* of ICs, because Φ₁ stays low even in the enlarged space (measured: a 4-D box of viscosity + 3 IC-coefficients hits 2·10⁻⁶ from 120 solves at Φ₁ ≈ 2.5). For *linear* PDEs the transfer is exact via u(T;k) = G(k)·u₀. It is a cache around a *question family* — and the family can be as wide as you are willing to parameterize. See the "recalibrate a whole family" recipe in the [cookbook](COOKBOOK.md).
 - Smoothness is measured, not assumed: when the parametric manifold genuinely resists (a breathing soliton — Kolmogorov n-width), Φ₁ flags it and no node budget will help. The dial exists precisely so the library can refuse honestly.
 - `resona.effective_rank` is a stochastic (Hutchinson) estimate; `lastsolve` uses 128 probes, good to a few percent on the dial.
 

@@ -186,6 +186,44 @@ Note Φ₁ = 1.51 at p = 3: physics is *sloppy* — the response occupies far
 fewer directions than the knob count, which is exactly why so few solves
 suffice.
 
+### Recalibrate a whole family — lift the initial condition into parameters
+
+A `k`-only surrogate is tied to one initial condition. That is not a wall,
+it's a choice: expand the IC (or geometry, or forcing) in a small basis and
+treat its coefficients as *extra knobs*. One precompute then covers the whole
+family — because sloppiness survives the added axes.
+
+```python
+import numpy as np
+from lastsolve import learn
+from lastsolve.zoo import X, K2, strang, d_dx
+
+def solve(theta):        # theta = [viscosity, then IC coefficients]
+    k, c = theta[0], theta[1:]
+    u0 = c[0]*np.sin(X) + c[1]*np.sin(2*X) + c[2]*np.sin(3*X)
+    return np.real(strang(u0, 0.12, 64, k*K2, lambda u: -u*d_dx(u)))
+
+box = [(0.014, 0.026), (0.7, 1.3), (0.1, 0.5), (-0.1, 0.2)]   # k + 3 IC knobs
+s = learn(solve, box, budget=120)
+print(s)
+rng = np.random.default_rng(7)
+errs = [np.linalg.norm(s.query(th)-solve(th))/np.linalg.norm(solve(th))
+        for th in [np.array([lo+(hi-lo)*rng.random() for lo, hi in box])
+                   for _ in range(40)]]
+print(f"median rel err over 40 fresh (k, IC) points: {np.median(errs):.1e}")
+```
+```
+SurrogateND(p=4, 117 training solves (120 total), val_err 3.5e-06, Φ₁ 2.53
+median rel err over 40 fresh (k, IC) points: 2.9e-06
+```
+
+120 solves buy accurate answers over a 4-D family — viscosity *and* a
+3-parameter space of initial conditions — at Φ₁ = 2.5, still far below the
+4 axes. (Naively transferring a fixed-IC k-surrogate to a new IC instead
+gives 9–80% error: the coefficients must be *in* the surrogate, not assumed
+away.) For a *linear* PDE the transfer is even exact — u(T;k) = G(k)·u₀ is
+linear in the IC, so learning its action on the basis is all you need.
+
 ### From a spectral fingerprint (you measured frequencies, not fields)
 
 ```python
