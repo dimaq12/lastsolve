@@ -2,8 +2,8 @@
 
 Task → verb → snippet → the lines it prints. Every output block below is the
 verbatim result of running the snippet on this machine — not a target, a
-transcript. `pip install -e .` first (or set `PYTHONPATH` to the repo), then
-paste any recipe into a file and run it.
+transcript. `pip install lastsolve` first, then paste any recipe into a file
+and run it.
 
 The contract everywhere: your solver is a plain function `f(k) → 1-D
 numpy array` (anything `np.asarray`-able; a scalar output is just a length-1

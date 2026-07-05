@@ -64,8 +64,15 @@ The research trail with every number: [The Price of an Answer](https://github.co
 ## Install & test
 
 ```bash
-pip install numpy scipy resona   # the FULL dependency list — no ML frameworks,
-pip install -e .                 # no CUDA, nothing to train
+pip install lastsolve            # that's it — deps are numpy, scipy, resona:
+                                 # no ML frameworks, no CUDA, nothing to train
+```
+
+Hacking on it / running the test suite:
+
+```bash
+git clone https://github.com/dimaq12/lastsolve.git && cd lastsolve
+pip install -e . && pip install pytest
 pytest tests/ -q                 # 26 tests, ~17 s, real PDEs inside
 ```
 
