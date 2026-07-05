@@ -28,9 +28,12 @@ class IdentifyResult:
     solves: int
     verdict: str
 
+    def __iter__(self):
+        return iter((self.k_hat, self.crb))
+
     def __repr__(self):
-        return (f"IdentifyResult(k_hat={self.k_hat:.6g}, ±{self.crb:.2g} (CRB), "
-                f"phi1={self.phi1:.2f}, solves={self.solves}, '{self.verdict}')")
+        return (f"IdentifyResult(k̂ = {self.k_hat:.6g} ± {self.crb:.2g} (CRB), "
+                f"Φ₁ {self.phi1:.2f}, {self.solves} solves, '{self.verdict}')")
 
 
 def identify(forward, data, krange, polish=True, transform=None,
@@ -44,7 +47,7 @@ def identify(forward, data, krange, polish=True, transform=None,
     if s is None:
         s = Surrogate(forward, krange, transform=transform)
         s.fit(seed=seed)
-    k_hat, crb = s.invert(data, polish=polish)
+    k_hat, crb = s.invert(data, polish=polish)   # Estimate unpacks
     rng_width = s.kb - s.ka
     if not np.isfinite(crb) or crb > 0.5*rng_width:
         verdict = ("the data do not contain this parameter "

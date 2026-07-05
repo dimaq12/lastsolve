@@ -29,6 +29,8 @@ import resona
 import resona.defect
 from scipy.optimize import minimize_scalar
 
+from .results import Certificate, Estimate, NotFittedError, OutOfRangeError
+
 #: named parameter transforms for `transform='auto'` — the surrogate can
 #: discover that a family is smooth in log k or 1/√k rather than k itself.
 TRANSFORMS = {
@@ -71,6 +73,17 @@ class Surrogate:
         pa, pb = self.tf(self.ka), self.tf(self.kb)
         self.a, self.b = min(pa, pb), max(pa, pb)
         self.fitted = False
+        self.certificate = None
+
+    def __repr__(self):
+        if not self.fitted:
+            return (f"Surrogate(unfitted, range [{self.ka:.4g}, {self.kb:.4g}], "
+                    f"coordinate '{self.transform_name}')")
+        cert = f", {self.certificate!r}" if self.certificate else ""
+        return (f"Surrogate([{self.ka:.4g}, {self.kb:.4g}] in "
+                f"'{self.transform_name}' coords: {self.n_nodes} nodes, "
+                f"{self.solves} solves, val_err {self.val_err:.1e}, "
+                f"Φ₁ {self.phi1:.2f}{cert})")
 
     # ── plumbing ─────────────────────────────────────────────────────────────
     def _f(self, k):
@@ -110,6 +123,7 @@ class Surrogate:
         u_val = None
         for n in ladder:
             self._build(n)
+            self.fitted = True            # nodes built ⇒ evaluable (validation below)
             if u_val is None:
                 u_val = [self._f(k) for k in k_val]
             errs = [np.linalg.norm(self.query(k)-u)/max(np.linalg.norm(u), 1e-16)
@@ -142,7 +156,15 @@ class Surrogate:
             return None, i
         return self.ws/d, None
 
-    def query(self, k):
+    def query(self, k, strict=True):
+        """The answer at k — microseconds. strict=True (default) refuses
+        out-of-range queries with OutOfRangeError: lastsolve never
+        extrapolates silently. strict=False extrapolates, on your head."""
+        if not self.fitted:
+            raise NotFittedError()
+        tol = 1e-12*max(abs(self.ka), abs(self.kb), 1.0)
+        if strict and not (self.ka - tol <= k <= self.kb + tol):
+            raise OutOfRangeError(k, self.ka, self.kb)
         c, i = self._coef(self.tf(k))
         if c is None:
             return self.U[i]
@@ -152,6 +174,8 @@ class Surrogate:
 
     def deriv(self, k):
         """∂f/∂k — analytic derivative of the interpolant (chain rule)."""
+        if not self.fitted:
+            raise NotFittedError()
         p = self.tf(k)
         c, i = self._coef(p)
         if c is None:
@@ -249,7 +273,15 @@ class Surrogate:
             crb = sigma_hat/nW
         else:
             crb = float('inf')
-        return k_hat, crb
+        rng_w = self.kb - self.ka
+        if not np.isfinite(crb) or crb > 0.5*rng_w:
+            verdict = "the data do not contain this parameter"
+        elif crb > 0.05*rng_w:
+            verdict = "weakly identifiable — an interval, not a number"
+        else:
+            verdict = "identifiable; the bar is the Cramér–Rao floor"
+        return Estimate(k_hat=float(k_hat), crb=float(crb), verdict=verdict,
+                        solves=self.solves)
 
     # ── certification ────────────────────────────────────────────────────────
     def certify(self, n_cal=8, alpha=0.1, seed=1):
@@ -274,5 +306,7 @@ class Surrogate:
             band, guarantee = float(scores[-1]), n_cal/(n_cal+1)
         else:
             band, guarantee = float(scores[rank-1]), rank/(n_cal+1)
-        return {"band": band, "guarantee": guarantee,
-                "n_cal": n_cal, "alpha": alpha}
+        self.certificate = Certificate(band=band, guarantee=guarantee,
+                                       n_cal=n_cal, alpha=alpha,
+                                       scores=list(scores))
+        return self.certificate

@@ -44,8 +44,8 @@ def test_surrogate_certify():
     pde, f = burgers_forward()
     s = Surrogate(f, (0.7*pde.k0[0], 1.3*pde.k0[0])).fit()
     cert = s.certify(n_cal=8, alpha=0.1)
-    assert cert["guarantee"] == pytest.approx(8/9)
-    assert cert["band"] < 1e-9         # smooth family: tiny certified band
+    assert cert.guarantee == pytest.approx(8/9)
+    assert cert.band < 1e-9         # smooth family: tiny certified band
 
 
 # ── @accelerate: counting and honesty ────────────────────────────────────────

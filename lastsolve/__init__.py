@@ -32,12 +32,34 @@ from .adapters import CommandSolver, accelerate_command
 from .timeprop import TimePropagator
 from .spectral_id import identify_spectral
 from .audit import normality_warning
+from .results import (Estimate, Certificate, LastsolveError,
+                      NotFittedError, OutOfRangeError)
 
-__version__ = "1.0.0"
+
+def learn(forward, domain, transform=None, **fit_kw):
+    """The one verb: fit the right surrogate for your domain.
+
+        learn(f, (a, b))                      → Surrogate   (one knob)
+        learn(f, [(a1,b1), (a2,b2), ...])     → SurrogateND (several knobs)
+
+    Returns a fitted object: query it, invert it, certify it, read its Φ₁.
+    """
+    import numpy as _np
+    d = _np.asarray(domain, dtype=float)
+    if d.ndim == 1:
+        s = Surrogate(forward, (float(d[0]), float(d[1])), transform=transform)
+    else:
+        s = SurrogateND(forward, domain)
+    return s.fit(**fit_kw)
+
+
+__version__ = "1.1.0"
 __all__ = [
-    "Surrogate", "TRANSFORMS", "accelerate", "Accelerated",
+    "learn", "Surrogate", "SurrogateND", "TRANSFORMS",
+    "accelerate", "Accelerated", "CommandSolver", "accelerate_command",
     "identify", "IdentifyResult", "audit", "AuditReport", "normality_warning",
     "detect_break", "WallReport", "classify_wall", "WallClass", "hard_points",
-    "SurrogateND", "CommandSolver", "accelerate_command",
-    "TimePropagator", "identify_spectral", "__version__",
+    "TimePropagator", "identify_spectral",
+    "Estimate", "Certificate", "LastsolveError", "NotFittedError",
+    "OutOfRangeError", "__version__",
 ]

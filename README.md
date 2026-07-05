@@ -5,14 +5,22 @@
 `lastsolve` is a certified accelerator and identification layer over *any* black-box parametric solver. You bring an expensive function `f(k) → field` — a PDE solver, a legacy code behind a subprocess, a simulator you can't even import. `lastsolve` spends a handful of calls on Chebyshev nodes and hands back the whole price list:
 
 ```python
-from lastsolve import accelerate
+from lastsolve import accelerate, learn
 
-@accelerate
-def solve(k):
+@accelerate(warmup=5)        # watch 5 real calls, learn the range they live in,
+def solve(k):                # then serve everything from the surrogate
     ...  # your expensive solver
 
-solve(0.021)     # ~10 real solves once — then microseconds,
-solve.stats      # with a validated error and the Φ₁ dial
+solve(0.021)                 # microseconds, with a validated error and the Φ₁ dial
+solve.stats                  # every real call counted
+
+s = learn(solve_fn, (0.014, 0.026))          # one knob  → Surrogate
+s = learn(solve_fn, [(a1,b1), (a2,b2)])      # several   → SurrogateND, same verbs
+k_hat, crb = s.invert(y_obs)                 # rich Estimate, unpacks as a tuple
+s.certify(n_cal=8)                           # Certificate(err ≤ 3.9e-15, ≥88.9%)
+s.query(0.05)                                # OutOfRangeError — lastsolve refuses
+                                             # to extrapolate; strict=False to
+                                             # accept an uncertified answer knowingly
 ```
 
 Built on [`resona`](https://pypi.org/project/resona/)'s matrix-free effective-rank dial — the measuring instrument of the *Spectra Without Matrices* series. The philosophy in one line: **measure the structure first, then pay accordingly.**
@@ -50,10 +58,10 @@ The research trail with every number: [The Price of an Answer](https://github.co
 ```bash
 pip install numpy scipy resona
 pip install -e .
-pytest tests/ -q        # 19 tests, ~13 s, real PDEs inside
+pytest tests/ -q        # 26 tests, ~17 s, real PDEs inside
 ```
 
-## Honest limits (v1.0)
+## Honest limits (v1.1)
 
 - Scalar-parameter surrogates are certified; **multi-parameter** (`SurrogateND`) is adaptive least-squares — excellent in the sloppy regime (which is most of physics), but its validation is empirical, not conformal yet.
 - The surrogate is built **per initial condition / configuration** — it is a cache around a question family, not a general solver replacement.

@@ -23,6 +23,8 @@ from itertools import combinations_with_replacement
 import numpy as np
 import resona
 
+from .results import Estimate, NotFittedError, OutOfRangeError
+
 
 def _monomials(P, deg):
     """Exponent tuples of total degree <= deg in P variables."""
@@ -58,6 +60,14 @@ class SurrogateND:
         self.box = np.asarray(box, dtype=float)
         self.P = len(self.box)
         self.solves = 0
+        self.fitted = False
+
+    def __repr__(self):
+        if not self.fitted:
+            return f"SurrogateND(unfitted, p={self.P})"
+        return (f"SurrogateND(p={self.P}, {len(self.K_train)} training solves "
+                f"({self.solves} total), val_err {self.val_err:.1e}, "
+                f"Φ₁ {self.phi1:.2f})")
 
     def _f(self, k):
         self.solves += 1
@@ -118,6 +128,7 @@ class SurrogateND:
         self._exps, self._C = self._fit_lsq(self._norm(K), Y,
                                             self._best_deg(len(K), deg_max))
         self.K_train, self.Y_train = K, Y
+        self.fitted = True                 # model built ⇒ evaluable
         # held-out validation
         errs = []
         for _ in range(n_val):
@@ -127,6 +138,7 @@ class SurrogateND:
                         / max(np.linalg.norm(y), 1e-16))
         self.val_err = float(np.max(errs))
         self._phi1 = None
+        self.fitted = True
         return self
 
     @property
@@ -141,11 +153,24 @@ class SurrogateND:
                                          probes=128).effective_rank())
         return self._phi1
 
-    def query(self, k):
-        z = self._norm(np.asarray(k, dtype=float))
+    def query(self, k, strict=True):
+        """The answer inside the box. strict=True refuses points outside —
+        lastsolve never extrapolates silently."""
+        if not self.fitted:
+            raise NotFittedError("SurrogateND")
+        k = np.asarray(k, dtype=float)
+        lo, hi = self.box[:, 0], self.box[:, 1]
+        tol = 1e-12*np.maximum(np.abs(lo), np.maximum(np.abs(hi), 1.0))
+        if strict and (np.any(k < lo-tol) or np.any(k > hi+tol)):
+            raise OutOfRangeError(k.tolist(), lo.tolist(), hi.tolist())
+        z = self._norm(k)
         return (_design_matrix(z, self._exps) @ self._C)[0]
 
     __call__ = query
+
+    #: ∂f/∂k alias — the scalar class calls it deriv
+    def deriv(self, k, h=1e-6):
+        return self.jac(k, h)
 
     def jac(self, k, h=1e-6):
         """∂f/∂k (m×p) from the surrogate — Fisher information for free."""
@@ -154,7 +179,8 @@ class SurrogateND:
         for d in range(self.P):
             e = np.zeros(self.P)
             e[d] = h*max(abs(k[d]), 1.0)
-            cols.append((self.query(k+e)-self.query(k-e))/(2*e[d]))
+            cols.append((self.query(k+e, strict=False)
+                         - self.query(k-e, strict=False))/(2*e[d]))
         return np.array(cols).T
 
     def invert(self, y_obs, restarts=8, seed=0):
@@ -188,4 +214,13 @@ class SurrogateND:
             crb = np.sqrt(np.maximum(np.diag(cov), 0))
         except np.linalg.LinAlgError:
             crb = np.full(self.P, np.inf)
-        return np.asarray(best), crb
+        widths = self.box[:, 1] - self.box[:, 0]
+        frac = np.max(crb/widths)
+        if not np.all(np.isfinite(crb)) or frac > 0.5:
+            verdict = "the data do not contain (some of) these parameters"
+        elif frac > 0.05:
+            verdict = "weakly identifiable — intervals, not numbers"
+        else:
+            verdict = "identifiable; bars are the Cramér–Rao floor"
+        return Estimate(k_hat=np.asarray(best), crb=np.asarray(crb),
+                        verdict=verdict, solves=self.solves)

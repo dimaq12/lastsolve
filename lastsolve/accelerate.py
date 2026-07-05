@@ -28,11 +28,13 @@ from .surrogate import Surrogate
 class Accelerated:
     """Callable wrapper produced by @accelerate."""
 
-    def __init__(self, fn, span=0.35, ladder=(7, 11, 15, 23, 31),
+    def __init__(self, fn, span=0.35, warmup=1, ladder=(7, 11, 15, 23, 31),
                  target=5e-11, transform=None, seed=0):
         functools.update_wrapper(self, fn)
         self._fn = fn
         self._span = span
+        self._warmup = max(1, int(warmup))
+        self._seen = []                       # (k, y) during warmup
         self._ladder = ladder
         self._target = target
         self._transform = transform
@@ -42,6 +44,16 @@ class Accelerated:
         self._served = 0
         self._fallback = 0
 
+    def __repr__(self):
+        s = self.stats
+        if self.surrogate is None:
+            return (f"Accelerated(warming up: {len(self._seen)}/{self._warmup} "
+                    f"observed calls)")
+        return (f"Accelerated({s['real_calls']} real → {s['served_from_surrogate']} "
+                f"served, {s['fallbacks_out_of_range']} fallbacks; "
+                f"range {s['range'][0]:.4g}..{s['range'][1]:.4g}, "
+                f"val_err {s['validated_err']:.1e}, Φ₁ {s['phi1']:.2f})")
+
     def _real_call(self, k):
         self._real += 1
         return np.asarray(self._fn(float(k)), dtype=float)
@@ -49,7 +61,17 @@ class Accelerated:
     def __call__(self, k):
         k = float(k)
         if self.surrogate is None:
-            ka, kb = sorted((k*(1-self._span), k*(1+self._span)))
+            if len(self._seen) + 1 < self._warmup:      # keep observing
+                y = self._real_call(k)
+                self._seen.append(k)
+                return y
+            self._seen.append(k)
+            if len(self._seen) > 1:                     # range from what we SAW
+                lo, hi = min(self._seen), max(self._seen)
+                pad = 0.15*max(hi-lo, abs(0.5*(lo+hi))*0.05, 1e-12)
+                ka, kb = lo-pad, hi+pad
+            else:                                       # classic: span around k₀
+                ka, kb = sorted((k*(1-self._span), k*(1+self._span)))
             s = Surrogate(lambda kk: self._fn(kk), (ka, kb),
                           transform=self._transform)
             s.fit(ladder=self._ladder, target=self._target, seed=self._seed)
