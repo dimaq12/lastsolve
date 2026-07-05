@@ -73,7 +73,7 @@ Hacking on it / running the test suite:
 ```bash
 git clone https://github.com/dimaq12/lastsolve.git && cd lastsolve
 pip install -e . && pip install pytest
-pytest tests/ -q                 # 26 tests, ~17 s, real PDEs inside
+pytest tests/ -q                 # 28 tests, ~20 s, real PDEs inside
 ```
 
 ## Honest limits (v1.1.2)
